@@ -61,7 +61,7 @@ if (isset($_GET["file"])) {
     if ($file != null) {
         header('Content-Type: ' . $file["mime"]);
         header('Content-Disposition: inline; filename="' . $file["origname"] . '"');
-        echo file_get_contents($FILE_PATH . "/" . $file["fileid"]);
+        echo file_get_contents($FILE_PATH . "/" . $file["fileid"] . "." . $file["origname"]);
     } else {
         header("HTTP/1.0 404 Not Found");
     }
@@ -113,7 +113,7 @@ function storeFile($name, $tmpFile, $formatted = false, $token)
         $target_file = $id;
     } while ($target_file == null || getFile($target_file) != null);
 
-    $res = move_uploaded_file($tmpFile, $FILE_PATH . "/" . $target_file) && logUpload($target_file, $mime, $name, $filesize);
+    $res = move_uploaded_file($tmpFile, $FILE_PATH . "/" . $target_file . "." . $name) && logUpload($target_file, $mime, $name, $filesize);
     if ($res) {
         //print the download link of the file
         $url = sprintf("%s://%s%s%s",

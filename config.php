@@ -12,4 +12,4 @@ $ALLOW_REGISTER = false;
 // https://github.com/settings/applications/new
 $GITHUB_CLIENT_ID = "";
 $GITHUB_CLIENT_SECRET = "";
-$ADMIN_EMAIL = "admin [at] (this domain)";  //address for inquiries
+$ADMIN_EMAIL = "admin ＠‍ (this domain)";  //address for inquiries

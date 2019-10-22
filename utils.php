@@ -21,35 +21,19 @@ function checkConfig()
 {
     global $MAX_FILESIZE;
     global $UPLOAD_TIMEOUT;
-    warnConfig('upload_max_filesize', "MAX_FILESIZE", $MAX_FILESIZE);
-    warnConfig('post_max_size', "MAX_FILESIZE", $MAX_FILESIZE);
-    warnConfig('max_input_time', "UPLOAD_TIMEOUT", $UPLOAD_TIMEOUT);
-    warnConfig('max_execution_time', "UPLOAD_TIMEOUT", $UPLOAD_TIMEOUT);
+    warn_config_value('upload_max_filesize', "MAX_FILESIZE", $MAX_FILESIZE);
+    warn_config_value('post_max_size', "MAX_FILESIZE", $MAX_FILESIZE);
+    warn_config_value('max_input_time', "UPLOAD_TIMEOUT", $UPLOAD_TIMEOUT);
+    warn_config_value('max_execution_time', "UPLOAD_TIMEOUT", $UPLOAD_TIMEOUT);
 }
 
-function warnConfig($iniName, $varName, $varValue)
+function warn_config_value($ini_name, $var_name, $var_val)
 {
-    $iniValue = return_bytes(ini_get($iniName));
-    if ($iniValue < $varValue)
+    $ini_val = intval(ini_get($ini_name));
+    if ($ini_val < $var_val)
         printf("<pre>Warning: php.ini: %s (%s) set lower than %s (%s)\n</pre>",
-            $iniName,
-            $iniValue,
-            $varName,
-            $varValue);
-}
-
-function return_bytes($val)
-{
-    $val = trim($val);
-    $last = strtolower($val[strlen($val) - 1]);
-    switch ($last) {
-        case 'g':
-            $val *= 1024;
-        case 'm':
-            $val *= 1024;
-        case 'k':
-            $val *= 1024;
-    }
-
-    return $val;
+            $ini_name,
+            $ini_val,
+            $var_name,
+            $var_val);
 }

@@ -15,6 +15,10 @@ if (isset($_SESSION["access_token"])) {
     $tokens = getUserTokens($uid, $user->login);
     if (isset($_GET['sharex'])) {
         sendShareXConfig($tokens[0]);
+    } else if (isset($_GET['hupl'])) {
+        sendHuplConfig($tokens[0]);
+    } else if (isset($_GET['kshare'])) {
+        sendKShareConfig($tokens[0]);
     } else if (isset($_GET["add"])) {
         generateToken($uid);
         header('Location: ' . $_SERVER['PHP_SELF']);
@@ -29,6 +33,9 @@ if (isset($_SESSION["access_token"])) {
 } else {
     if (isset($_GET['login'])) {
         getLogin();
+    } else if (isset($_GET["error"])) {
+        echo '<pre>' . var_export($_GET, true) . '</pre>';
+        die();
     } else if (isset($_GET["code"])) {
         if (!isset($_GET['state']) || $_SESSION['state'] != $_GET['state']) {
             header('Location: ' . $_SERVER['PHP_SELF']);
@@ -38,7 +45,7 @@ if (isset($_SESSION["access_token"])) {
         $token = apiRequest("https://github.com/login/oauth/access_token", array(
             'client_id' => $GITHUB_CLIENT_ID,
             'client_secret' => $GITHUB_CLIENT_SECRET,
-            'redirect_uri' => $HTTP_PROTO . '://' . $_SERVER['SERVER_NAME'] . $_SERVER['PHP_SELF'],
+            'redirect_uri' => $HTTP_PROTO . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'],
             'state' => $_SESSION['state'],
             'code' => $_GET['code']
         ));
@@ -50,8 +57,9 @@ if (isset($_SESSION["access_token"])) {
 if (isset($_FILES["file"]["name"]) && isset($_FILES["file"]["tmp_name"]) && is_uploaded_file($_FILES["file"]["tmp_name"])) {  //file was uploaded, store it
     $formatted = isset($_GET["formatted"]) || isset($_POST["formatted"]);
     $token = "";
+
     if (isset($_SERVER['PHP_AUTH_USER'])) $token = $_SERVER['PHP_AUTH_USER'];
-    if (isset($_GET["token"]) || isset($_POST["token"])) $token = $_GET["token"] != null ? $_GET["token"] : $_POST["token"];
+    if (isset($_GET["token"]) || isset($_POST["token"])) $token = (isset($_GET["token"]) ? $_GET["token"] : $_POST["token"]);
     storeFile($_FILES["file"]["name"], $_FILES["file"]["tmp_name"], $formatted, $token);
     die();
 }
@@ -118,7 +126,7 @@ function storeFile($name, $tmpFile, $formatted = false, $token)
         //print the download link of the file
         $url = sprintf("%s://%s%s%s",
             $HTTP_PROTO,
-            $_SERVER["SERVER_NAME"],
+            $_SERVER["HTTP_HOST"],
             $HTTP_PATH,
             $target_file);
         if ($formatted) {
@@ -162,6 +170,59 @@ EOT;
     print($content);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// send a Hupl uploader config as .hupl (which is just JSON)
+////////////////////////////////////////////////////////////////////////////////
+function sendHuplConfig($token)
+{
+    global $HTTP_PROTO;
+    $host = $_SERVER["HTTP_HOST"];
+    $path = $_SERVER['PHP_SELF'];
+    $filename =  $host.".hupl";
+    $content = <<<EOT
+{
+  "name": "$host",
+  "type": "http",
+  "targetUrl": "$HTTP_PROTO://$host/$path?token=$token",
+  "fileParam": "file"
+}
+EOT;
+    header("Content-type: application/octet-stream");
+    header('Content-Disposition: attachment; filename="'.$filename.'"');
+    header("Content-Length: ".strlen($content));
+    print($content);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// send a KSHare uploader config as .uploader (which is just JSON)
+////////////////////////////////////////////////////////////////////////////////
+function sendKShareConfig($token)
+{
+    global $HTTP_PROTO;
+    $host = $_SERVER["HTTP_HOST"];
+    $path = $_SERVER['PHP_SELF'];
+    $filename =  $host.".uploader";
+    $content = <<<EOT
+{
+    "name": "$host",
+    "target": "$HTTP_PROTO://$host/$path?token=$token",
+    "format": "multipart-form-data",
+    "body": [
+        {
+            "__Content-Type": "/%contenttype/",
+            "filename": "/%filename/",
+            "name": "file",
+            "body": "/%imagedata/"
+        }
+    ],
+    "return": "|"
+}
+EOT;
+    header("Content-type: application/octet-stream");
+    header('Content-Disposition: attachment; filename="'.$filename.'"');
+    header("Content-Length: ".strlen($content));
+    print($content);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // print a plaintext info page, explaining what this script does and how to
@@ -179,7 +240,10 @@ function printInfo()
     };
     $url = $HTTP_PROTO . "://" . $_SERVER["HTTP_HOST"] . $_SERVER['PHP_SELF'];
     $sharexUrl = $url . "?sharex";
+    $huplUrl = $url . "?hupl";
+    $kshareUrl = $url . "?kshare";
     $authenticated = false;
+    $tokens = [""]; // prevent Undefined variable
 
     $text = 'First Login via GitHub to generate a token. <a href="?login">Login here</a>.';
     if (isset($_SESSION["access_token"])) {
@@ -203,6 +267,8 @@ function printInfo()
     echo <<<EOF
 <html>
 <head>
+    <title>File Share</title>
+    <meta name="description" content="Private minimalistic service for sharing files." />
     <style>
         input[type=submit] {
             border-radius: 1px;
@@ -245,8 +311,9 @@ curl -F "file=@/path/to/your/file.jpg" -u ' . $tokens[0] . ': \
 Token authentication is possible via username in basic-auth or with the
 POST/GET field "token"
 
-On Windows, you can use <a href="https://getsharex.com/">ShareX</a> and import <a href="' . $sharexUrl . '">this</a> custom uploader.
-On Android, you can use an app called <a href="https://play.google.com/store/apps/details?id=eu.imouto.hupl">Hupl</a>.
+On Windows, you can use <a href="https://getsharex.com/">ShareX</a> and import <a href="' . $sharexUrl . '" target="_blank">this</a> custom uploader.
+On Android, you can use an app called <a href="https://play.google.com/store/apps/details?id=eu.imouto.hupl">Hupl</a> with <a href="' . $huplUrl . '" target="_blank">this</a> custom uploader.
+On Linux or Mac, you can compile <a href="https://github.com/Gurkengewuerz/KShare">KShare</a> and add <a href="' . $kshareUrl . '" target="_blank">this</a> config to ~/.config/KShare/uploader.
 
 Or simply choose a file and click "Upload" below:
 </pre>

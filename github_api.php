@@ -12,7 +12,7 @@ function getLogin()
     unset($_SESSION['access_token']);
     $params = array(
         'client_id' => $GITHUB_CLIENT_ID,
-        'redirect_uri' => $HTTP_PROTO . '://' . $_SERVER['SERVER_NAME'] . $_SERVER['PHP_SELF'],
+        'redirect_uri' => $HTTP_PROTO . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'],
         'scope' => 'user:email',
         'state' => $_SESSION['state']
     );
@@ -29,7 +29,7 @@ function apiRequest($url, $post = FALSE, $headers = array())
     if ($post)
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
     $headers[] = 'Accept: application/json';
-    if ($_SESSION['access_token'])
+    if (isset($_SESSION['access_token']))
         $headers[] = 'Authorization: Bearer ' . $_SESSION['access_token'];
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     $response = curl_exec($ch);

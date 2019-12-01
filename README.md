@@ -40,7 +40,7 @@ If you want to use this script via a subdomain like *share.example.com* you shou
         add_header Strict-Transport-Security "max-age=31536000;" always;
     
         location / {
-            location ~ /data.db {
+            location ~ /database.db {
                     deny all;
             }
             if (-f $request_filename) {
@@ -62,7 +62,7 @@ If you want to use this script via a subdomain like *share.example.com* you shou
 If you are using the script in a subdirectory like *example.com/share/* use the following location directive for your server.
 
     location /share/ {
-        location ~ /data.db {
+        location ~ /database.db {
     
             deny all;
         }

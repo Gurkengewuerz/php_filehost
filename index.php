@@ -13,6 +13,11 @@ if (isset($_SESSION["access_token"])) {
     $user = apiRequest('https://api.github.com/user');
     $uid = $user->id;
     $tokens = getUserTokens($uid, $user->login);
+
+    if (empty($tokens)) {
+        die("registration is disabled in this instance\r\nlogout <a href='?logout'>here</a>");
+    }
+
     if (isset($_GET['sharex'])) {
         sendShareXConfig($tokens[0]);
     } else if (isset($_GET['hupl'])) {

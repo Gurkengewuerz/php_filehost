@@ -19,6 +19,14 @@ function rndStr($len)
 ////////////////////////////////////////////////////////////////////////////////
 function checkConfig()
 {
+    if (!extension_loaded("sqlite3")) {
+        die("php module sqlite3 not installed.");
+    }
+
+    if (!extension_loaded("curl")) {
+        die("php module curl not installed.");
+    }
+
     global $MAX_FILESIZE;
     global $UPLOAD_TIMEOUT;
     warn_config_value('upload_max_filesize', "MAX_FILESIZE", $MAX_FILESIZE);

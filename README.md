@@ -1,43 +1,75 @@
-# Single .php Filehost
-Simple PHP script, mainly for sharing random files with people using curl. (and thus in an easily scriptable way)
+## Simple File Uploader
+Simple File Uploader is a script, mainly for sharing random files with people using [ShareX](https://github.com/ShareX/ShareX). It was mainly developed by [@Rouji](https://github.com/Rouji/single_php_filehost).
 
-It receives files uploaded via HTTP POST, and saves them to a configured directory, with a randomised filename (but preserving the original file extension).  
-On successful upload, it returns a link to the uploaded file. Serving the file to people you've shared the link with can then simply be left to apache to figure out.
+Puts a file sent via POST into a configured directory with a randomised filename but preserving the original filename and file extension, and returns a link to it.
+Actually serving the file to people is left to nginx to figure out.
 
-There's also a mechanism for removing files over a certain age, which can be invoked by calling the script with a commandline argument.
+### Installation
+In this installation I assume that a working lemp server is already running (but MySQL/MariaDB is actually not needed).  
+Firstly create a directory like ```/var/www/share``` and unpack all PHP scripts into it. After that, change the owner to www-data respectively nginx.  
+**Dont forget to add read and write permissions to the data/ folder!**
 
-## Config
-All configuration is done using the global variables at the top of **index.php**. Hopefully, they're explained well enough in the short comments besides them.
+Install ```php7.2-sqlite3``` and restart php-fpm. Before continuing setup your nginx config.
 
-To accommodate for larger uploads, you'll also need to set the following values in your php.ini:  
-upload_max_filesize  
-post_max_size  
-max_input_time  
-max_execution_time  
-(The output of index.php will also warn you, if any of those are set too small)
+Create a new [Github OAuth Application](https://github.com/settings/applications/new) and set the **Authorization callback URL** to ```https://share.example.com/``` if you want to use a subdomain else ```https://example.com/share/```.  
+In the *config.php* set ```$ALLOW_REGISTER = true;```, save and press the login button on your site. After a successfull login open *config.php* again and undo the change by setting ```$ALLOW_REGISTER = false;```.
 
-The code responsible for the default info text can be found at the very bottom of index.php, in case you want to reword anything.
+Perfect you are ready.
 
+### NGINX Config
+If you want to use this script via a subdomain like *share.example.com* you should use the following server configuration. Dont forget to use HTTPS, as you have a login on the website!
 
-## Purging Old Files
-To check for any files, that exceed their max age, and delete them, you need to call index.php with the argument "purge"  
-```
-php index.php purge
-```
+    server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name share.example.com;
+        return 302 https://$host$request_uri;
+    }
 
-To automate this, simply create a cron job:
-```
-0 0 * * * cd /path/to/the/root; php index.php purge > /dev/null
-```
-If you specify **$STORE_PATH** using an absolute path, you can omit the **cd**
+    server {
+        listen 443 ssl http2;
+        listen [::]:443 ssl http2;
+    
+        root /var/www/share/;
+        index index.php index.html index.htm;
+        server_name share.example.com;
+    
+        ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    
+        add_header Strict-Transport-Security "max-age=31536000;" always;
+    
+        location / {
+            location ~ /database.db {
+                    deny all;
+            }
+            if (-f $request_filename) {
+                break;
+            }
+            rewrite ^/$ /index.php last;
+            rewrite ^/(.*) /index.php?file=$1;
+        }
+    
+        location ~ \.php$ {
+                try_files $uri =404;
+                fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;
+                fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                include fastcgi_params;
+        }
+    }
 
+If you are using the script in a subdirectory like *example.com/share/* use the following location directive for your server.
 
-### Max. File Age
-The max age of a file is computed using the following formula:
-```
-$fileMaxAge = $MIN_FILEAGE +  
-              ($MAX_FILEAGE - $MIN_FILEAGE) *  
-              pow(1-($fileSize/$MAX_FILESIZE),$DECAY_EXP);
-```
-...which is a basic exponential decay curve that favours smaller files, meaning small files are kept longer and really big ones are deleted relatively quickly.  
-**$DECAY_EXP** is one of the configurable globals and basically makes the curve more or less exponential-looking. Set to 1 for a completely linear relationship.  
+    location /share/ {
+        location ~ /database.db {
+    
+            deny all;
+        }
+        if (-f $request_filename) {
+    
+            break;
+        }
+        rewrite ^/share/$ /share/index.php last;
+        rewrite ^/share/(.*) /share/index.php?file=$1;
+    }
